@@ -9,14 +9,41 @@
 #include "Aia1.h"
 #include <cv.h>
 #include <highgui.h>
+//#include <imgproc.h>
 // function that performs some kind of (simple) image processing
 /*
 img	input image
 return	output image
 */
-Mat Aia1::doSomethingThatMyTutorIsGonnaLike(Mat& img){
-	Mat g_img,r_img;
 
+inline uchar Clamp(int n)
+{
+    n = n>255 ? 255 : n;
+    return n<0 ? 0 : n;
+}
+
+Mat Aia1::doSomethingThatMyTutorIsGonnaLike(Mat& img){
+	Mat r_img;
+	int ch;
+
+	r_img = img.clone();
+
+	for (int i = 1 ; i < img.rows; i++ )
+	{
+		for (int x = 1 ; x < img.cols; x++)
+		{
+			for (int j = 0; j < 3; j++)
+			{
+				ch = rand() % 3;
+				//cout << ch << endl;
+				r_img.at<Vec3b>(i,x) [ch] = rand() % 100;
+			}
+		}
+	}
+
+
+
+/*
 	cvtColor(img,g_img, CV_BGR2GRAY );
 	cv::Mat noise_img = Mat(g_img.size(),CV_64F);
 
@@ -27,10 +54,11 @@ Mat Aia1::doSomethingThatMyTutorIsGonnaLike(Mat& img){
 	r_img.convertTo(r_img, CV_32F, 255, 0);
 
 	normalize(r_img, r_img, 0.0, 1.0, CV_MINMAX, CV_64F);
+*/
+	cout << "Master Debug"<< endl;
 
-
-	// TO DO !!!
 	return r_img;
+
 
 }
 
