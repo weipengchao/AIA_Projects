@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
+//#include <imgproc.h>
 
 #include "Aia1.h"
 
