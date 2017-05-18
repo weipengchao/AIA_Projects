@@ -16,8 +16,33 @@ thresh		threshold used to binarize the image
 k			number of applications of the erosion operator
 */
 void Aia2::getContourLine(const Mat& img, vector<Mat>& objList, int thresh, int k){
+	// TO DO !!!
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy; // hierarchy[0]=[23,34,45,56] example
+	Mat threshold_output, Erode_output;
 
-    // TO DO !!!
+	// Schwellen erkennen 255 max wert , Thresh_binary welches Farbformat
+	threshold(img,threshold_output, thresh,k,THRESH_BINARY_INV); //THRESH_BINARY_INV thresh
+	//threshold(img, threshold_output, 130, 1 ,THRESH_BINARY_INV);
+	//showImage(threshold_output,"test threshold_output",0);
+
+	// Kernel ist für das eroden zuständig 3x3
+	Mat kernel = Mat::ones(3,3,threshold_output.type()) * 255;
+	erode(threshold_output,Erode_output, kernel, Point(-1,-1),k);
+
+	showImage(Erode_output,"test Erode_output",0);
+
+	// dst contours besthet aus Punkten 1x1 Mat Contours (X:Y), CV_RETR only outer contour
+	findContours(Erode_output, contours, hierarchy,CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, Point(0,0));
+
+	//
+	//cout << "contours aus get CL" << contours.at(0) << endl;
+
+	// Erstelle eine Matritze contour_oList und lade mit Vektor(Points)
+	Mat contour_oList(contours);
+
+	objList.push_back(contour_oList);
+
 }
 
 // calculates the (unnormalized!) fourier descriptor from a list of points
@@ -28,9 +53,25 @@ out		fourier descriptor (not normalized)
 Mat Aia2::makeFD(const Mat& contour){
 
     // TO DO !!!
+	// CV_8U is unsigned 8bit/pixel ||| CV_32F is float, contour = 1x1 Mat
+	Mat output_DFT;
 
-    return contour;
+	//zeros(int rows, int cols, int type);
+	Mat converted_contour = Mat::zeros(contour.rows, 1, CV_32F);
+	// Vec2f = Float(x,y) Vec2i = integer(x,y) convert rowi 0=x 1=Y
+	for(int i = 0; i < converted_contour.rows; i++){
+		converted_contour.at<Vec2f>(i)[0] = contour.at<Vec2i>(i)[0];
+		converted_contour.at<Vec2f>(i)[1] = contour.at<Vec2i>(i)[1];
+		cout << "wert" << i << endl;
+	}
 
+	//contour.convertTo(converted_contour,CV_32F);
+
+	dft(converted_contour,output_DFT);
+
+
+
+	return output_DFT;
 }
 
 // normalize a given fourier descriptor
@@ -41,25 +82,61 @@ out		the normalized fourier descriptor
 */
 Mat Aia2::normFD(const Mat& fd, int n){
 
-  //plotFD(<???>, "fd not normalized", 0);
 
-  // translation invariance
-  // TO DO !!!
-  //plotFD(<???>, "fd translation invariant", 0);
 
-  // scale invariance
-  // TO DO !!!
-  //plotFD(<???>, "fd translation and scale invariant", 0);
+	//plotFD(<???>, "fd not normalized", 0);
 
-  // rotation invariance
-  // TO DO !!!
-  //plotFD(<???>, "fd translation, scale, and rotation invariant", 0);
+	// translation invariance
+	// TO DO !!!
+	Mat magnitude, angle,copy_fd;
 
-  // smaller sensitivity for details
-  // TO DO !!!
-  //plotFD(<???>, "fd translation, scale, and rotation invariant, smaller sensitivity", 0);
+	vector<Mat> channels;
 
-  return fd;
+	// Trennen von fd in two channels in der Matrix fd sind Spalten mit den Real und Imag Frequenzen e^(jphi)= A(Cos(phi)+jSin(phi))
+	split(fd, channels);
+
+
+
+	Mat result = Mat::zeros(n, 1, CV_32FC1);
+	// Input X und Y ---->  Gibt aus Betrag und Winkel
+	//cartToPolar(channels[0],channels[1],magnitude,angle,true);
+
+	// Translation invariance
+	// Gleichanteil an fd bei Stelle 0 0 setzen
+	fd.copyTo(copy_fd);
+
+	copy_fd.at<float>(0) = 0;
+
+	//plotFD(<???>, "fd translation invariant", 0);
+
+	// scale invariance
+	// TO DO !!!
+	//plotFD(<???>, "fd translation and scale invariant", 0);
+	Mat copyScaleInva_fd =  copy_fd.at<float>(1) / magnitude;
+
+	/*
+	for(int k = 0; k < angle.rows; k++){
+		//cout << k << ": " << angle.at<Vec2f>(0)[0] << "," << angle.at<Vec2f>(0)[1] << endl;
+		cout << k << ": " << angle.at<Vec2f>(k)[0]<< endl;
+		cout << k << ": " << angle.at<Vec2f>(k)[1]<< endl;
+	}
+	*/
+
+	// rotation invariance
+	// TO DO !!!
+	//plotFD(<???>, "fd translation, scale, and rotation invariant", 0);
+	/*
+	for (int i = 0 ; i < n ; i++ ){
+		angle.at<float>(i) = angle.at<float>(i)+1;
+	}
+	*/
+
+	// smaller sensitivity for details
+	// TO DO !!!
+	//plotFD(<???>, "fd translation, scale, and rotation invariant, smaller sensitivity", 0);
+
+
+  //return fd;
 }
 
 // plot fourier descriptor
@@ -87,6 +164,7 @@ template2	path to template image of class 2
 */
 void Aia2::run(string img, string template1, string template2){
 
+	cout<<"Run geht"<< endl;
 	// process image data base
 	// load image as gray-scale, paths in argv[2] and argv[3]
 	Mat exC1 = imread( template1, 0);
@@ -111,8 +189,9 @@ void Aia2::run(string img, string template1, string template2){
 	vector<Mat> contourLines2;
 	// TO DO !!!
 	// --> Adjust threshold and number of erosion operations
-	binThreshold = 0;
-	numOfErosions = 1;
+	binThreshold = 135;
+	numOfErosions = 3;
+
 	getContourLine(exC1, contourLines1, binThreshold, numOfErosions);
 	int mSize = 0, mc1 = 0, mc2 = 0, i = 0;
 	for(vector<Mat>::iterator c = contourLines1.begin(); c != contourLines1.end(); c++,i++){
@@ -150,8 +229,8 @@ void Aia2::run(string img, string template1, string template2){
 	vector<Mat> contourLines;
 	// TO DO !!!
 	// --> Adjust threshold and number of erosion operations
-	binThreshold = 0;
-	numOfErosions = 1;
+	binThreshold = 135;
+	numOfErosions = 3;
 	getContourLine(query, contourLines, binThreshold, numOfErosions);
 
 	cout << "Found " << contourLines.size() << " object candidates" << endl;
