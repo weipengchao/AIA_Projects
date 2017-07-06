@@ -74,8 +74,17 @@ Mat Aia5::calcMixtureLogL(vector<struct comp*>& model, Mat& features){
 			logC.at<float>(featureNo) = max;
 		}
 
+	// Gehe alle Features durch und nehme aus jedem die Reihen und deren Model-Parameter für den calcCompLogL-Fkt-Aufruf
+		for(unsigned modelNr = 0; modelNr < model.size(); modelNr++){
+			Mat expRes;
+			exp(compLogRes.row(modelNr) - logC, expRes);
+			add(result, expRes, result);
+		}
+		log(result, result);
+		add(result, logC, result);
 
-	return Mat();
+
+	return result;
 }
 
 // Computes the posterior over components (the degree of component membership) for each feature.
