@@ -35,11 +35,6 @@ Mat Aia5::calcCompLogL(vector<struct comp*>& model, Mat& features){
 			  result.at<float>(modelNo,featureNo) = detCovMat + calcComponent +  z;
 		}
 	}
-
-
-
-
-
 	return result;
 }
 
@@ -51,14 +46,18 @@ return:	   the log-likelihood of feature number i in the mixture model (the log 
 */
 Mat Aia5::calcMixtureLogL(vector<struct comp*>& model, Mat& features){
 	// To Do !!!
-	Mat result = Mat::zeros(1, features.rows, CV_32FC1);
+
+	Mat result = Mat::zeros(1, features.cols, CV_32FC1);
 
 	//Rückgabewert ist Log (trick)
 	Mat compLogRes = calcCompLogL(model, features);
 	//Log -> entfernen
+
 	exp(compLogRes,compLogRes);
+
 	// -> Zeigerzugriff
 	for(unsigned modelNr = 0; modelNr < model.size(); modelNr++){
+		// Lade cLR mit model
 			compLogRes.row(modelNr) *= model.at(modelNr)->weight;
 			//cout << "compLogRes:"<< modelNr << compLogRes.row(modelNr) << endl;
 	}
@@ -69,17 +68,27 @@ Mat Aia5::calcMixtureLogL(vector<struct comp*>& model, Mat& features){
 	Mat logC = Mat::zeros(1, features.cols,CV_32FC1);
 	double min,max;
 
+	// finde max cLR vom Feature
 	for (int featureNo = 0; featureNo < features.cols; featureNo++){
 			minMaxLoc(compLogRes.col(featureNo), &min, &max);
 			logC.at<float>(featureNo) = max;
 		}
 
+
 	// Gehe alle Features durch und nehme aus jedem die Reihen und deren Model-Parameter für den calcCompLogL-Fkt-Aufruf
 		for(unsigned modelNr = 0; modelNr < model.size(); modelNr++){
-			Mat expRes;
-			exp(compLogRes.row(modelNr) - logC, expRes);
+			Mat expRes = Mat::zeros(1, features.cols,CV_32FC1);
+
+			exp(compLogRes.row(modelNr) - logC.row(modelNr), expRes);
+
+			cout << "resultmatrix" << result.size() << endl;
+			cout << "resultmatrix" << expRes.size() << endl;
+
 			add(result, expRes, result);
+
+
 		}
+
 		log(result, result);
 		add(result, logC, result);
 
@@ -95,6 +104,17 @@ return:		the posterior p(y_i=j|x_i)
 */
 Mat Aia5::gmmEStep(vector<struct comp*>& model, Mat& features){
 	// To Do !!!
+	cout << "gmmEStep" << endl;
+	Mat result = Mat::zeros(1,model.size(),CV_32FC1);
+
+	Mat MixLogRes = calcMixtureLogL(model, features);
+	Mat comLogRes = calcCompLogL(model, features);
+
+	for (unsigned modelNo = 0; modelNo < model.size(); modelNo++){
+		result.row(modelNo) = log(model.at(modelNo)-> weight) + comLogRes.row(modelNo) - MixLogRes;
+	}
+exp(result, result);
+
 	return Mat();
 }
 
@@ -107,6 +127,36 @@ posterior: the posterior p(y_i=j|x_i)
 */
 void Aia5::gmmMStep(vector<struct comp*>& model, Mat& features, Mat& posterior){
    // To Do !!!
+
+	Mat N = Mat::zeros(posterior.cols, 1, CV_32FC1);
+
+		for(unsigned modelNr = 0; modelNr < model.size(); modelNr++){
+
+			for(int posteriorNr = 0; posteriorNr < posterior.cols; posteriorNr++){
+				N.at<float>(modelNr, 0) = posterior.at<float>(modelNr, posteriorNr) + N.at<float>(modelNr, 0);
+			}
+
+			// weight updating
+			model.at(modelNr)->weight = N.at<float>(modelNr, 0) / features.cols;
+
+
+			// mean updating
+			model.at(modelNr)->mean.at<float>(modelNr, 0) = 0;
+			for(int posteriorNr = 0; posteriorNr < posterior.cols; posteriorNr++){
+				model.at(modelNr)->mean.at<float>(modelNr, 0) = (features.at<float>(modelNr, posteriorNr) * posterior.at<float>(modelNr, posteriorNr)) / N.at<float>(modelNr, 0) + model.at(modelNr)->mean.at<float>(modelNr, 0);
+			}
+
+			// covar updating
+			model.at(modelNr)->covar = Mat::zeros(model.at(modelNr)->covar.rows, model.at(modelNr)->covar.cols, CV_32FC1);
+			for(int posteriorNr = 0; posteriorNr < posterior.cols; posteriorNr++){
+				float calcRes = features.at<float>(modelNr, posteriorNr) - model.at(modelNr)->mean.at<float>(modelNr, posteriorNr);
+				calcRes = calcRes * calcRes * posterior.at<float>(modelNr, posteriorNr);
+				model.at(modelNr)->covar.at<float>(modelNr, 0) = calcRes / N.at<float>(modelNr, 0) + model.at(modelNr)->covar.at<float>(modelNr, 0);
+			}
+		}
+
+
+
 }
 
 /* *****************************
