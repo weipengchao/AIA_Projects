@@ -16,7 +16,8 @@ return: 	the log-likelihood log(p(x_i|y_i=j))
 */
 Mat Aia5::calcCompLogL(vector<struct comp*>& model, Mat& features){
 	// To Do !!!
-	cout<<"Features" << features << endl;
+	cout<<"Features:" << features.cols << endl;
+	cout<<"Model:" << model.size() << endl;
 	Mat result = Mat::zeros(model.size(),features.cols,CV_32FC1);
 
 	float z = - features.rows * log(2 * CV_PI)/2;
@@ -28,8 +29,10 @@ Mat Aia5::calcCompLogL(vector<struct comp*>& model, Mat& features){
 			Mat featuremean;
 			subtract(features.col(featureNo),model.at(modelNo)->mean,featuremean);
 			Mat invCovMat = model.at(modelNo)->covar.inv();
-
+			// Zugriff auf Mat XY (0,0)
 			float calcComponent = ((Mat)(- 0.5 * featuremean.t()*invCovMat*featuremean)).at<float>(0,0);
+
+			  result.at<float>(modelNo,featureNo) = detCovMat + calcComponent +  z;
 		}
 	}
 
@@ -37,7 +40,7 @@ Mat Aia5::calcCompLogL(vector<struct comp*>& model, Mat& features){
 
 
 
-	return Mat();
+	return result;
 }
 
 // Computes the log-likelihood of each feature by combining the likelihoods in all model components.
@@ -49,6 +52,28 @@ return:	   the log-likelihood of feature number i in the mixture model (the log 
 Mat Aia5::calcMixtureLogL(vector<struct comp*>& model, Mat& features){
 	// To Do !!!
 	Mat result = Mat::zeros(1, features.rows, CV_32FC1);
+
+	//Rückgabewert ist Log (trick)
+	Mat compLogRes = calcCompLogL(model, features);
+	//Log -> entfernen
+	exp(compLogRes,compLogRes);
+	// -> Zeigerzugriff
+	for(unsigned modelNr = 0; modelNr < model.size(); modelNr++){
+			compLogRes.row(modelNr) *= model.at(modelNr)->weight;
+			//cout << "compLogRes:"<< modelNr << compLogRes.row(modelNr) << endl;
+	}
+
+	//Log trick
+	log(compLogRes, compLogRes);
+
+	Mat logC = Mat::zeros(1, features.cols,CV_32FC1);
+	double min,max;
+
+	for (int featureNo = 0; featureNo < features.cols; featureNo++){
+			minMaxLoc(compLogRes.col(featureNo), &min, &max);
+			logC.at<float>(featureNo) = max;
+		}
+
 
 	return Mat();
 }
