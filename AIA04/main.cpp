@@ -22,10 +22,10 @@ int main(int argc, char** argv) {
 	Aia5 aia;
 
 	// start simple clustering
-   //aia.test();
+   aia.test();
 	
 	// start processing
-   aia.run();
+  // aia.run();
 	
 	cout << endl << "Continue with pressing enter..." << endl;
 	cin.get();
